@@ -67,6 +67,13 @@ def main():
   print(f"Carregando dataset de: {tokenized_dataset_path}")
   tokenized_ds = load_from_disk(tokenized_dataset_path)
 
+  # Usaremos 10% dos dados para avaliação
+  # Não é necessário importar o train_test_split explicitamente, pois é um método do Dataset
+  split_datasets = tokenized_ds.train_test_split(test_size=0.1, seed=42) # type: ignore
+  train_dataset = split_datasets['train']
+  eval_dataset = split_datasets['test']
+  print(f"Dataset dividido: {len(train_dataset)} para treino, {len(eval_dataset)} para avaliação.")
+
   print("Definindo e inicializando os modelos do zero...")
   teacher_config = BertConfig(num_hidden_layers=6, hidden_size=768, num_attention_heads=12)
   student_config = BertConfig(num_hidden_layers=4, hidden_size=768, num_attention_heads=12)
@@ -89,20 +96,31 @@ def main():
     num_train_epochs=3,
     per_device_train_batch_size=8,
     logging_steps=10,
-    save_strategy="no", # Não vamos salvar checkpoints neste teste
+    eval_strategy="epoch",          # Avalia a cada época
+    save_strategy="epoch",          # Salva a cada época
+    load_best_model_at_end=True,    # Carrega o melhor modelo no final
+    metric_for_best_model="loss",   # Usa a 'loss' para decidir qual é o melhor
+    greater_is_better=False,        # Menor loss é melhor
+    save_total_limit=2,
   )
 
   # Instanciar e Executar o Trainer Customizado
   trainer = CTCDTrainer(
-    model=teacher_model,      # O modelo principal (professor)
-    student_model=student_model, # Modelo estudante
+    model=teacher_model,
+    student_model=student_model,
     args=training_args,
-    train_dataset=tokenized_ds,
+    train_dataset=train_dataset,  # Fornece o split de treino
+    eval_dataset=eval_dataset,    # Fornece o split de avaliação
     data_collator=data_collator,
   )
 
   print("Iniciando o co-treinamento...")
   trainer.train()
+
+  best_student_model_path = os.path.join(project_dir, 'models', 'best_student_model')
+  trainer.student_model.save_pretrained(best_student_model_path)
+  print(f"Melhor modelo estudante salvo em: {best_student_model_path}")
+
   print("Treinamento concluído com sucesso!")
 
 if __name__ == '__main__':
