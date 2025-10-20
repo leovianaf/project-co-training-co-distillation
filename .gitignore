@@ -3,8 +3,8 @@
 /data/processed/*
 /data/interim/*
 /data/external/*
-!/data/**/.gitkeep
 /data/tasks/*
+!/data/**/.gitkeep
 
 # Modelos
 /models/

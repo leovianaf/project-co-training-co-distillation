@@ -38,7 +38,7 @@ def prepare_glue_datasets():
         download_and_save_glue_task(task)
     print("\n Todos os datasets GLUE foram processados com sucesso.\n")
 
-def main():
+def prepare_pretraining_data():
     project_dir = os.path.join(os.path.dirname(__file__), '..')
     processed_data_path = os.path.join(project_dir, 'data', 'processed')
 
@@ -79,5 +79,5 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    prepare_pretraining_data()
     prepare_glue_datasets()
