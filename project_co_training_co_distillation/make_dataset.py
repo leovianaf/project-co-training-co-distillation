@@ -1,6 +1,42 @@
 import os
 from datasets import load_from_disk, concatenate_datasets
 from transformers import AutoTokenizer
+from datasets import load_dataset
+
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+TASKS_DIR = os.path.join(DATA_DIR, "tasks")
+os.makedirs(TASKS_DIR, exist_ok=True)
+
+GLUE_TASKS = {
+    "stsb": "STS-B (Semantic Textual Similarity Benchmark): medir quão semelhantes em significado são duas frases.",
+    "mrpc": "MRPC (Microsoft Research Paraphrase Corpus): verificar se duas frases são paráfrases.",
+    "rte":  "RTE (Recognizing Textual Entailment): decidir se uma frase implica outra."
+}
+
+def download_and_save_glue_task(task_name: str):
+    """
+    Baixa o dataset GLUE especificado e salva localmente em data/tasks/<task_name>/.
+    Caso já exista, o download é ignorado.
+    """
+    save_path = os.path.join(TASKS_DIR, task_name)
+    if os.path.exists(save_path):
+        print(f"{task_name.upper()} já existe em {save_path}")
+        return
+
+    print(f"\n⬇ Baixando dataset GLUE - {task_name.upper()} ...")
+    dataset = load_dataset("glue", task_name)
+    dataset.save_to_disk(save_path)
+    print(f"Dataset {task_name.upper()} salvo em: {save_path}")
+    print(f"ℹDescrição: {GLUE_TASKS[task_name]}")
+
+def prepare_glue_datasets():
+    """
+    Baixa e salva localmente todos os datasets GLUE necessários (STS-B, MRPC, RTE).
+    """
+    print("\n=== Preparação dos datasets GLUE ===")
+    for task in GLUE_TASKS.keys():
+        download_and_save_glue_task(task)
+    print("\n Todos os datasets GLUE foram processados com sucesso.\n")
 
 def main():
     project_dir = os.path.join(os.path.dirname(__file__), '..')
@@ -44,3 +80,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    prepare_glue_datasets()

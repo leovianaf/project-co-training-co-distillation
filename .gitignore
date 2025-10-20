@@ -4,6 +4,7 @@
 /data/interim/*
 /data/external/*
 !/data/**/.gitkeep
+/data/tasks/*
 
 # Modelos
 /models/
