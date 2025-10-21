@@ -9,53 +9,118 @@ A replication study of the paper 'Co-training and Co-distillation for Quality Im
 ## Project Organization
 
 ```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
+├── LICENSE
+├── Makefile
+├── README.md          <- Este arquivo.
 ├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
+│   ├── external       <- Dados de fontes externas.
+│   ├── interim        <- Dados intermediários.
+│   ├── processed      <- Datasets finais processados (ex: amostras locais, dataset tokenizado).
+│   ├── raw            <- Dados brutos originais.
+│   └── tasks          <- Dados para rodar as tasks GLUE de fine-tuning.
 │
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
+├── docs               <- Documentação completa do projeto.
 │
-├── models             <- Trained and serialized models, model predictions, or model summaries
+├── models             <- Modelos treinados, checkpoints e saídas.
+│   ├── best_student_model <- Melhor modelo Student após pré-treinamento CTCD.
+│   ├── best_teacher_model <- Melhor modelo Teacher após pré-treinamento CTCD.
+│   ├── ctcd-sample-output <- Checkpoints do pré-treinamento CTCD.
+│   └── finetuned          <- Modelos após fine-tuning nas tarefas GLUE.
+│       ├── student
+│       └── teacher
 │
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
+├── notebooks          <- Jupyter notebooks para exploração e prototipagem.
+│   ├── data-download.ipynb         <- Notebook para download dos datasets completos.
+│   └── make_sample_datasets.ipynb  <- Notebook (Colab) para criar amostras dos datasets.
 │
-├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         project_co_training_co_distillation and configuration for tools like black
+├── pyproject.toml     <- Configuração do projeto (ruff, build, etc.).
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+├── references         <- Materiais de referência
+│   └── 2023.findings-emnlp.500.pdf. <- Paper original.
 │
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
+├── reports            <- Relatórios, figuras e logs de treinamento.
+│   └── figures        <- Gráficos e tabelas de resultados.
+│   └── logs           <- Logs do TensorBoard.
 │
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
+├── requirements.txt   <- Dependências do Python.
 │
-├── setup.cfg          <- Configuration file for flake8
-│
-└── project_co_training_co_distillation   <- Source code for use in this project.
+└── project_co_training_co_distillation   <- Código-fonte do projeto.
     │
-    ├── __init__.py             <- Makes project_co_training_co_distillation a Python module
+    ├── __init__.py
     │
-    ├── config.py               <- Store useful variables and configuration
+    ├── ctcd                 <- Módulo específico do pré-treinamento CTCD.
+    │   ├── __init__.py
+    │   └── train_model.py   <- Script para pré-treinamento CTCD (Teacher + Student).
     │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
-    │
-    └── plots.py                <- Code to create visualizations
+    ├── make_dataset.py      <- Script para baixar e preparar todos os datasets.
+    ├── finetuning_glue.py   <- Script reutilizável para fine-tuning em tarefas GLUE.
+    ├── evaluate_glue.py     <- Script reutilizável para avaliar modelos em tarefas GLUE.
+    └── utils_finetune.py    <- Funções utilitárias para fine-tuning e avaliação.
 ```
 
 --------
 
+## Usage Pipeline
+
+Este projeto replica o framework CTCD. O pipeline principal consiste em:
+
+1.  **Preparação dos Dados:** Baixar e processar o corpus de pré-treinamento e os datasets de avaliação GLUE.
+2.  **Pré-treinamento CTCD:** Treinar os modelos Teacher (6-camadas BERT) e Student (4-camadas BERT) simultaneamente usando a loss CTCD.
+3.  **Fine-tuning:** Ajustar os modelos pré-treinados (Teacher ou Student) em tarefas específicas do GLUE (STS-B, MRPC, RTE).
+4.  **Avaliação:** Medir o desempenho dos modelos fine-tunados nos conjuntos de teste das tarefas GLUE.
+
+### Comandos Principais
+
+Execute os seguintes comandos a partir da **raiz do projeto**:
+
+1.  **Preparar todos os datasets (pré-treino e GLUE):**
+    ```bash
+    python -m project_co_training_co_distillation.make_dataset
+    ```
+    *(Este script baixa os datasets GLUE e processa os dados de pré-treino locais salvos em `data/processed`)*
+
+2.  **Executar o pré-treinamento CTCD (com a amostra de dados):**
+    ```bash
+    python -m project_co_training_co_distillation.ctcd.train_model
+    ```
+    *(Isso treinará Teacher e Student juntos e salvará os melhores modelos em `models/best_teacher_model` e `models/best_student_model`)*
+
+3.  **Executar o Fine-tuning:**
+    Use o script `finetuning_glue.py` com os argumentos `--model_type` e `--task_name`.
+
+    **Argumentos `--model_type` disponíveis:**
+
+    | Argumento | Descrição                      |
+    | :-------- | :----------------------------- |
+    | `teacher` | Usa o modelo Teacher (6-layer) |
+    | `student` | Usa o modelo Student (4-layer) |
+
+    **Argumentos `--task_name` disponíveis:**
+
+    | Argumento | Descrição da Tarefa GLUE                                               |
+    | :-------- | :--------------------------------------------------------------------- |
+    | `stsb`    | STS-B: Similaridade Semântica Textual (regressão)                      |
+    | `mrpc`    | MRPC: Detecção de Paráfrases (classificação binária)                   |
+    | `rte`     | RTE: Reconhecimento de Implicação Textual (classificação binária)      |
+
+    **Exemplo (Student no STS-B):**
+    ```bash
+    python -m project_co_training_co_distillation.finetuning_glue --model_type student --task_name stsb
+    ```
+    *(Carrega `models/best_student_model`, faz fine-tuning na tarefa STS-B e salva o resultado em `models/finetuned/student/stsb`)*
+
+4.  **Executar a Avaliação:**
+    Use o script `evaluate_glue.py` com os argumentos `--model_type`, `--task_name` e opcionalmente `--split`.
+
+    **Argumento `--split` disponíveis:**
+
+    | Argumento    | Descrição                                 |
+    | :----------- | :---------------------------------------- |
+    | `validation` | Usa o conjunto de validação (padrão)      |
+    | `test`       | Usa o conjunto de teste                   |
+
+    **Exemplo (Student no STS-B, split de teste):**
+    ```bash
+    python -m project_co_training_co_distillation.evaluate_glue --model_type student --task_name stsb --split test
+    ```
+    *(Carrega o modelo de `models/finetuned/student/stsb` e avalia no conjunto de teste do STS-B)*
