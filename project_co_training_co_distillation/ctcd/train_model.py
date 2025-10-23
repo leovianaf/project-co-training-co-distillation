@@ -1,4 +1,3 @@
-# ctcd_pretraining.py
 import os
 import math
 import inspect
@@ -38,12 +37,12 @@ class CTCDTrainer(Trainer):
     def create_optimizer(self):
         if self.optimizer is None:
             opt_cls, opt_kwargs = Trainer.get_optimizer_cls_and_kwargs(self.args)
-            params = chain(self.model.parameters(), self.student_model.parameters())
+            params = chain(self.model.parameters(), self.student_model.parameters()) # type: ignore
             self.optimizer = opt_cls(params, **opt_kwargs)
         return self.optimizer
 
     # Scheduler padrão
-    def create_scheduler(self, num_training_steps: int, optimizer: torch.optim.Optimizer = None):
+    def create_scheduler(self, num_training_steps: int, optimizer: torch.optim.Optimizer = None): # type: ignore
         return super().create_scheduler(num_training_steps, optimizer or self.optimizer)
 
     # Loss conjunta (co-training + co-distillation)
@@ -133,13 +132,12 @@ def evaluate_model(model, tokenizer, dataset, batch_size=8):
 
 
 # ============================================================
-#  Main pipeline
+#  Pre-training com Co-Training + Co-Distillation
 # ============================================================
 def main():
     print(f"PyTorch CUDA disponível? {torch.cuda.is_available()}")
 
-    # Caminhos
-    project_dir = os.path.join(os.path.dirname(__file__), "..")
+    project_dir = os.path.join(os.path.dirname(__file__), "..", "..")
     tokenized_dataset_path = os.path.join(project_dir, "data", "processed", "tokenized_sample_dataset")
     out_dir = os.path.join(project_dir, "models", "ctcd-sample-output")
 
@@ -175,7 +173,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, use_fast=True)
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm_probability=0.15)
 
-    # Args de treino (compatível com qualquer versão do Transformers)
+    # Args de treino
     args_kwargs = {
         "output_dir": out_dir,
         "overwrite_output_dir": True,
@@ -224,14 +222,14 @@ def main():
     print("Iniciando co-training + co-distillation ...")
     trainer.train()
 
-    # Salvamento
+    # Salvando os melhores modelos
     best_teacher_dir = os.path.join(project_dir, "models", "best_teacher_model")
     best_student_dir = os.path.join(project_dir, "models", "best_student_model")
     os.makedirs(best_teacher_dir, exist_ok=True)
     os.makedirs(best_student_dir, exist_ok=True)
 
-    trainer.model.save_pretrained(best_teacher_dir)
-    trainer.student_model.save_pretrained(best_student_dir)
+    trainer.model.save_pretrained(best_teacher_dir) # type: ignore
+    trainer.student_model.save_pretrained(best_student_dir) # type: ignore
     tokenizer.save_pretrained(best_teacher_dir)
     tokenizer.save_pretrained(best_student_dir)
 
@@ -239,7 +237,7 @@ def main():
     print(f"[OK] Student salvo em:  {best_student_dir}")
 
     # ========================================================
-    # Avaliação dos dois modelos (como no paper)
+    # Avaliação dos dois modelos (como é feito no paper)
     # ========================================================
     print("\n=== Avaliação Final (Teacher vs Student) ===")
     teacher_loss, teacher_ppl = evaluate_model(trainer.model, tokenizer, eval_dataset)

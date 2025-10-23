@@ -3,11 +3,15 @@
 /data/processed/*
 /data/interim/*
 /data/external/*
-!/data/**/.gitkeep
 /data/tasks/*
+!/data/**/.gitkeep
 
 # Modelos
 /models/
+
+# Logs
+reports/logs/*
+!/reports/logs/.gitkeep
 
 # Mac OS-specific storage files
 .DS_Store
