@@ -1,4 +1,5 @@
 import os
+import json
 import torch
 import argparse
 from datasets import load_from_disk
@@ -31,7 +32,6 @@ def main():
 
   # --- Caminhos Dinâmicos ---
   PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-  # Carrega o modelo JÁ FINE-TUNADO
   MODEL_DIR = os.path.join(PROJECT_DIR, "models", "finetuned", args.model_type, args.task_name)
   DATA_PATH = os.path.join(PROJECT_DIR, "data", "tasks", args.task_name)
 
@@ -75,6 +75,14 @@ def main():
   # --- Avaliar ---
   print("Iniciando avaliação...")
   metrics = trainer.evaluate(encoded_ds[args.split]) # type: ignore
+
+  # 💾 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  # SALVAR MÉTRICAS COMO JSON para o script de visualização
+  save_path = os.path.join(MODEL_DIR, "all_results.json")
+  with open(save_path, "w") as f:
+      json.dump(metrics, f, indent=2)
+  print(f"[OK] Métricas salvas em: {save_path}")
+  # 💾 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   print(f"\n--- Métricas Finais ({args.model_type} / {args.task_name} / {args.split}) ---")
   print(metrics)

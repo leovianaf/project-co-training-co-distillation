@@ -5,6 +5,7 @@
 /data/external/*
 /data/tasks/*
 !/data/**/.gitkeep
+reports/predictions/*
 
 # Modelos
 /models/
@@ -197,3 +198,4 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+

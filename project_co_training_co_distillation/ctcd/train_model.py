@@ -50,46 +50,61 @@ class CTCDTrainer(Trainer):
         teacher_model = model
         student_model = self.student_model
 
-        teacher_model.train()
-        student_model.train()
+        # Forward passes
+        outputs_teacher = teacher_model(**inputs, output_hidden_states=False, output_attentions=False)
+        outputs_student = student_model(**inputs, output_hidden_states=False, output_attentions=False)
 
-        outputs_teacher = teacher_model(**inputs)
-        outputs_student = student_model(**inputs)
-
-        hard_loss_teacher = outputs_teacher.loss
-        hard_loss_student = outputs_student.loss
-
-        labels = inputs.get("labels", None)
-        if labels is None:
-            raise ValueError("Esperava 'labels' em inputs para MLM.")
-
+        labels = inputs.get("labels")
         mask = labels.ne(-100)
-        if not mask.any():
-            soft_loss_student = torch.zeros((), device=labels.device)
-            soft_loss_teacher = torch.zeros((), device=labels.device)
-        else:
+        
+        # 1. TEACHER HARD LOSS (com labels originais)
+        teacher_hard_loss = F.cross_entropy(
+            outputs_teacher.logits.view(-1, outputs_teacher.logits.size(-1)),
+            labels.view(-1),
+            ignore_index=-100
+        )
+        
+        # 2. STUDENT HARD LOSS (com labels originais)  
+        student_hard_loss = F.cross_entropy(
+            outputs_student.logits.view(-1, outputs_student.logits.size(-1)),
+            labels.view(-1), 
+            ignore_index=-100
+        )
+
+        # 3. CO-DISTILLATION (bidirecional)
+        if mask.any():
             t_logits = outputs_teacher.logits[mask]
             s_logits = outputs_student.logits[mask]
             T = self.temperature
 
-            # KL(Student || Teacher): treina TEACHER
-            soft_loss_teacher = F.kl_div(
-                input=F.log_softmax(t_logits / T, dim=-1),
-                target=F.softmax(s_logits.detach() / T, dim=-1),
-                reduction="batchmean",
-            ) * (T ** 2)
-
-            # KL(Teacher || Student): treina STUDENT
+            # STUDENT SOFT LOSS: KL(Student || Teacher)
+            # Teacher Soft Label → Student Soft Loss
             soft_loss_student = F.kl_div(
-                input=F.log_softmax(s_logits / T, dim=-1),
-                target=F.softmax(t_logits.detach() / T, dim=-1),
-                reduction="batchmean",
+                F.log_softmax(s_logits / T, dim=-1),
+                F.softmax(t_logits.detach() / T, dim=-1),  # Teacher como target
+                reduction="batchmean"
             ) * (T ** 2)
 
-        loss_teacher = hard_loss_teacher + self.lambda_soft * soft_loss_teacher
-        loss_student = hard_loss_student + self.lambda_soft * soft_loss_student
-        total_loss = loss_teacher + loss_student
+            # TEACHER SOFT LOSS: KL(Teacher || Student)  
+            # Student Soft Label → Teacher Soft Loss
+            soft_loss_teacher = F.kl_div(
+                F.log_softmax(t_logits / T, dim=-1),
+                F.softmax(s_logits.detach() / T, dim=-1),  # Student como target
+                reduction="batchmean"
+            ) * (T ** 2)
+        else:
+            soft_loss_student = soft_loss_teacher = 0.0
 
+        # ⚠️ **CORREÇÃO CRÍTICA**: Na imagem, Student Hard Loss vai SOMENTE para Student
+        # e Teacher Hard Loss vai SOMENTE para Teacher
+        # MAS ambos são otimizados JUNTAMENTE no mesmo backward()
+        
+        teacher_total_loss = teacher_hard_loss + self.lambda_soft * soft_loss_teacher
+        student_total_loss = student_hard_loss + self.lambda_soft * soft_loss_student
+        
+        # Total loss = Teacher Loss + Student Loss (ambos otimizados conjuntamente)
+        total_loss = teacher_total_loss + student_total_loss
+        
         return (total_loss, outputs_teacher) if return_outputs else total_loss
 
 

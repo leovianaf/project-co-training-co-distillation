@@ -1,35 +1,44 @@
+import numpy as np
 import evaluate
 
-# Mapeia tasks para suas métricas e configurações de modelo
 TASK_CONFIGS = {
-  "stsb": {
-    "metric_name": "spearmanr",
-    "num_labels": 1,
-    "problem_type": "regression",
-    "greater_is_better": True,
-  },
-  "mrpc": {
-    "metric_name": "accuracy",
-    "num_labels": 2,
-    "problem_type": "single_label_classification",
-    "greater_is_better": True,
-  },
-  "rte": {
-    "metric_name": "accuracy",
-    "num_labels": 2,
-    "problem_type": "single_label_classification",
-    "greater_is_better": True,
-  },
+    "stsb": {
+        "num_labels": 1,
+        "problem_type": "regression",
+        "metric_name": "pearsonr",
+        "greater_is_better": True,
+    },
+    "mrpc": {
+        "num_labels": 2,
+        "problem_type": "single_label_classification",
+        "metric_name": "f1",
+        "greater_is_better": True,
+    },
+    "rte": {
+        "num_labels": 2,
+        "problem_type": "single_label_classification",
+        "metric_name": "accuracy",
+        "greater_is_better": True,
+    },
 }
 
 def get_compute_metrics_fn(task_name):
-  """Retorna a função compute_metrics correta para a tarefa."""
-  metric = evaluate.load("glue", task_name)
-
-  def compute_metrics(eval_pred):
-    predictions, labels = eval_pred
     if task_name == "stsb":
-      predictions = predictions.squeeze()
-    return metric.compute(predictions=predictions, references=labels)
+        metric = evaluate.combine(["pearsonr", "spearmanr"])
+    elif task_name == "mrpc":
+        metric = evaluate.combine(["f1", "accuracy"])
+    else:  # rte
+        metric = evaluate.load("accuracy")
 
-  return compute_metrics
+    def compute_metrics(eval_pred):
+        logits, labels = eval_pred
+        if task_name == "stsb":
+            # Regressão → logits têm shape (N, 1)
+            preds = np.squeeze(logits)
+            return metric.compute(predictions=preds, references=labels)
+        else:
+            # Classificação → logits têm shape (N, C)
+            preds = np.argmax(logits, axis=-1)
+            return metric.compute(predictions=preds, references=labels)
+
+    return compute_metrics
