@@ -76,13 +76,11 @@ def main():
   print("Iniciando avaliação...")
   metrics = trainer.evaluate(encoded_ds[args.split]) # type: ignore
 
-  # 💾 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
   # SALVAR MÉTRICAS COMO JSON para o script de visualização
   save_path = os.path.join(MODEL_DIR, "all_results.json")
   with open(save_path, "w") as f:
       json.dump(metrics, f, indent=2)
   print(f"[OK] Métricas salvas em: {save_path}")
-  # 💾 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
   print(f"\n--- Métricas Finais ({args.model_type} / {args.task_name} / {args.split}) ---")
   print(metrics)
