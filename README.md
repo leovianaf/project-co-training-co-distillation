@@ -104,7 +104,7 @@ Execute os seguintes comandos a partir da **raiz do projeto**:
     --dataset_path "data/processed/tokenized_aroeira_subset_1k" \
     --tokenizer_name "neuralmind/bert-base-portuguese-cased"
     ```
-    **Comando padrão (Execução em Inglês):**
+    **Comando padrão (Execução em Português por default):**
     ```bash
     python -m project_co_training_co_distillation.ctcd.train_model
     ```
