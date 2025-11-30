@@ -214,9 +214,9 @@ def main():
     args_kwargs = {
         "output_dir": out_dir,
         "overwrite_output_dir": True,
-        "per_device_train_batch_size": 2,
-        "per_device_eval_batch_size": 4,
-        "gradient_accumulation_steps": 4,
+        "per_device_train_batch_size": 16,
+        "per_device_eval_batch_size": 16,
+        "gradient_accumulation_steps": 1,
         "num_train_epochs": 10,
         "learning_rate": 5e-5,
         "weight_decay": 0.01,
