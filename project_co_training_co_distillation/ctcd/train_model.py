@@ -214,9 +214,9 @@ def main():
     args_kwargs = {
         "output_dir": out_dir,
         "overwrite_output_dir": True,
-        "per_device_train_batch_size": 16,
-        "per_device_eval_batch_size": 16,
-        "gradient_accumulation_steps": 1,
+        "per_device_train_batch_size": 2,
+        "per_device_eval_batch_size": 4,
+        "gradient_accumulation_steps": 4,
         "num_train_epochs": 10,
         "learning_rate": 5e-5,
         "weight_decay": 0.01,
@@ -277,8 +277,13 @@ def main():
     # Avaliação dos dois modelos (como é feito no paper)
     # ========================================================
     print("\n=== Avaliação Final (Teacher vs Student) ===")
-    teacher_loss, teacher_ppl = evaluate_model(trainer.model, tokenizer, eval_dataset)
-    student_loss, student_ppl = evaluate_model(trainer.student_model, tokenizer, eval_dataset)
+    model_columns = ['input_ids', 'attention_mask', 'token_type_ids', 'labels']
+    eval_dataset_clean = eval_dataset.select_columns(
+        [c for c in eval_dataset.column_names if c in model_columns]
+    )
+
+    teacher_loss, teacher_ppl = evaluate_model(trainer.model, tokenizer, eval_dataset_clean)
+    student_loss, student_ppl = evaluate_model(trainer.student_model, tokenizer, eval_dataset_clean)
 
     print(f"Teacher -> Loss: {teacher_loss:.4f} | Perplexity: {teacher_ppl:.2f}")
     print(f"Student -> Loss: {student_loss:.4f} | Perplexity: {student_ppl:.2f}")
