@@ -9,7 +9,7 @@ from transformers import (
   TrainingArguments,
   Trainer,
 )
-from .utils_finetune import TASK_CONFIGS, get_compute_metrics_fn
+from .utils_finetune import TASK_CONFIGS, TASK_CONFIGS_PT, get_compute_metrics_fn
 
 # ============================================================
 #  Função Principal de Fine-Tuning
@@ -17,7 +17,7 @@ from .utils_finetune import TASK_CONFIGS, get_compute_metrics_fn
 
 def main():
   # --- Argumentos da Linha de Comando ---
-  parser = argparse.ArgumentParser(description="Fine-tune CTCD models on GLUE tasks.")
+  parser = argparse.ArgumentParser(description="Fine-tune CTCD models on GLUE/ASSIN2 tasks.")
   parser.add_argument(
     "--model_type",
     type=str,
@@ -30,20 +30,32 @@ def main():
     type=str,
     required=True,
     choices=["stsb", "mrpc", "rte"],
-    help="Tarefa GLUE para fine-tuning."
+    help="Tarefa para fine-tuning."
+  )
+  parser.add_argument(
+    "--language",
+    type=str,
+    default="pt",
+    choices=["pt", "en"],
+    help="Idioma dos dados (pt=ASSIN2, en=GLUE)."
   )
   args = parser.parse_args()
 
-  if args.task_name not in TASK_CONFIGS:
-    raise ValueError(f"Tarefa {args.task_name} não configurada.")
-
-  TASK_CONFIG = TASK_CONFIGS[args.task_name]
+  if args.language == "pt":
+    if args.task_name not in TASK_CONFIGS_PT:
+      raise ValueError(f"Tarefa {args.task_name} não suportada em Português (use stsb ou rte).")
+    TASK_CONFIG = TASK_CONFIGS_PT[args.task_name]
+  else:
+    if args.task_name not in TASK_CONFIGS:
+      raise ValueError(f"Tarefa {args.task_name} não configurada.")
+    TASK_CONFIG = TASK_CONFIGS[args.task_name]
 
   # --- Caminhos Dinâmicos ---
   PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
   MODEL_DIR = os.path.join(PROJECT_DIR, "models", f"best_{args.model_type}_model")
-  DATA_PATH = os.path.join(PROJECT_DIR, "data", "tasks", args.task_name)
-  OUTPUT_DIR = os.path.join(PROJECT_DIR, "models", "finetuned", args.model_type, args.task_name)
+  dataset_name = TASK_CONFIG.get("dataset_name", args.task_name)
+  DATA_PATH = os.path.join(PROJECT_DIR, "data", "tasks", dataset_name)
+  OUTPUT_DIR = os.path.join(PROJECT_DIR, "models", "finetuned", args.language, args.model_type, args.task_name)
 
   os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -51,6 +63,7 @@ def main():
   print(f"Dispositivo: {DEVICE}")
   print(f"[MODELO] {args.model_type} | PATH : {MODEL_DIR}")
   print(f"[TASK-DATASET] {args.task_name} | PATH : {DATA_PATH}")
+  print(f"[IDIOMA] {args.language}")
 
   # --- Carregar e Tokenizar Dataset ---
   if not os.path.exists(DATA_PATH):
@@ -69,7 +82,29 @@ def main():
     )
 
   encoded_ds = dataset.map(preprocess_function, batched=True)
-  encoded_ds = encoded_ds.remove_columns(["sentence1", "sentence2", "idx"])
+  if args.language == "pt":
+    label_col = TASK_CONFIG["label_column"] # ex: 'relatedness_score' ou 'entailment_judgment'
+
+    if args.task_name == "stsb":
+      # Para Regressão: Apenas renomeia a coluna de score para 'label'
+      print(f"Renomeando coluna '{label_col}' para 'label'...")
+      encoded_ds = encoded_ds.rename_column(label_col, "label")
+
+    elif args.task_name == "rte":
+      # Para Classificação: Converte String -> Int e renomeia
+      print(f"Mapeando labels de '{label_col}' para inteiros...")
+      # Mapeamento do ASSIN 2
+      label2id = {"NONE": 0, "ENTAILMENT": 1}
+
+      encoded_ds = encoded_ds.map(
+          lambda x: {'label': label2id[x[label_col]]}
+      )
+
+  # Remove colunas desnecessárias para evitar erro no Trainer
+  cols_to_keep = ['input_ids', 'attention_mask', 'token_type_ids', 'label']
+  cols_to_remove = [c for c in encoded_ds['train'].column_names if c not in cols_to_keep] # type: ignore
+  encoded_ds = encoded_ds.remove_columns(cols_to_remove)
+
   encoded_ds.set_format("torch")
 
   # --- Carregar o Modelo que será Fine-tunado ---

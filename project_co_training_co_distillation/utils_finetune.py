@@ -22,6 +22,25 @@ TASK_CONFIGS = {
     },
 }
 
+TASK_CONFIGS_PT = {
+    "stsb": {
+        "dataset_name": "assin2",
+        "metric_name": "pearsonr",
+        "num_labels": 1,
+        "problem_type": "regression",
+        "label_column": "relatedness_score",
+        "greater_is_better": True,
+    },
+    "rte": {
+        "dataset_name": "assin2",
+        "metric_name": "accuracy",
+        "num_labels": 2,
+        "problem_type": "single_label_classification",
+        "label_column": "entailment_judgment",
+        "greater_is_better": True,
+    },
+}
+
 def get_compute_metrics_fn(task_name):
     if task_name == "stsb":
         metric = evaluate.combine(["pearsonr", "spearmanr"])

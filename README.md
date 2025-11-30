@@ -17,7 +17,7 @@ A replication study of the paper 'Co-training and Co-distillation for Quality Im
 │   ├── interim        <- Dados intermediários.
 │   ├── processed      <- Datasets finais processados (ex: amostras locais, dataset tokenizado).
 │   ├── raw            <- Dados brutos originais.
-│   └── tasks          <- Dados para rodar as tasks GLUE de fine-tuning.
+│   └── tasks          <- Dados para rodar as tasks ASSIN 2 ou GLUE de fine-tuning.
 │
 ├── docs               <- Documentação completa do projeto.
 │
@@ -52,7 +52,8 @@ A replication study of the paper 'Co-training and Co-distillation for Quality Im
     │   ├── __init__.py
     │   └── train_model.py   <- Script para pré-treinamento CTCD (Teacher + Student).
     │
-    ├── make_dataset.py      <- Script para baixar e preparar todos os datasets.
+    ├── make_dataset.py      <- Script para baixar e preparar os datasets em inglês.
+    ├── make_dataset_pt.py   <- Script para baixar e preparar os datasets em português.
     ├── finetuning_glue.py   <- Script reutilizável para fine-tuning em tarefas GLUE.
     ├── evaluate_glue.py     <- Script reutilizável para avaliar modelos em tarefas GLUE.
     └── utils_finetune.py    <- Funções utilitárias para fine-tuning e avaliação.
@@ -62,7 +63,7 @@ A replication study of the paper 'Co-training and Co-distillation for Quality Im
 
 ## Usage Pipeline
 
-Este projeto replica o framework CTCD. O pipeline principal consiste em:
+Este projeto replica o framework CTCD e foi adaptado para funcionar tanto com o pipeline original (Inglês) quanto para Português (PT-BR).
 
 1.  **Preparação dos Dados:** Baixar e processar o corpus de pré-treinamento e os datasets de avaliação GLUE.
 2.  **Pré-treinamento CTCD:** Treinar os modelos Teacher (6-camadas BERT) e Student (4-camadas BERT) simultaneamente usando a loss CTCD.
@@ -74,19 +75,43 @@ Este projeto replica o framework CTCD. O pipeline principal consiste em:
 Execute os seguintes comandos a partir da **raiz do projeto**:
 
 1.  **Preparar todos os datasets (pré-treino e GLUE):**
+    * **Para Português:**
+    Baixa o dataset ASSIN 2 e processa a amostra do corpus Aroeira.
+    ```bash
+    python -m project_co_training_co_distillation.make_dataset_pt
+    ```
+
+    * **Para Inglês:**
+    Baixa o GLUE e processa amostras do BookCorpus/Wikipedia.
     ```bash
     python -m project_co_training_co_distillation.make_dataset
     ```
-    *(Este script baixa os datasets GLUE e processa os dados de pré-treino locais salvos em `data/processed`)*
+    *(Este script baixa os datasets ASSIN 2 ou GLUE e processa os dados de pré-treino locais salvos em `data/processed`, é necessário baixar o Corpus desejado)*
 
 2.  **Executar o pré-treinamento CTCD (com a amostra de dados):**
+    O script de treinamento agora aceita argumentos para definir o dataset e o tokenizer.
+
+    **Argumentos Disponíveis:**
+
+    | Argumento          | Descrição                                                       | Exemplo PT-BR                                | Exemplo EN                                |
+    | :----------------- | :-------------------------------------------------------------- | :------------------------------------------- | :---------------------------------------- |
+    | `--dataset_path`   | Caminho para a pasta do dataset tokenizado (gerado no passo 1). | `data/processed/tokenized_aroeira_subset_1k` | `data/processed/tokenized_sample_dataset` |
+    | `--tokenizer_name` | Nome do modelo no Hugging Face para o tokenizador.              | `neuralmind/bert-base-portuguese-cased`      | `bert-base-uncased`                       |
+
+    **Comando para executar (Exemplo em Português para amostra de testes (1000 dados)):**
+    ```bash
+    python -m project_co_training_co_distillation.ctcd.train_model \
+    --dataset_path "data/processed/tokenized_aroeira_subset_1k" \
+    --tokenizer_name "neuralmind/bert-base-portuguese-cased"
+    ```
+    **Comando padrão (Execução em Português por default):**
     ```bash
     python -m project_co_training_co_distillation.ctcd.train_model
     ```
     *(Isso treinará Teacher e Student juntos e salvará os melhores modelos em `models/best_teacher_model` e `models/best_student_model`)*
 
 3.  **Executar o Fine-tuning:**
-    Use o script `finetuning_glue.py` com os argumentos `--model_type` e `--task_name`.
+    Use o script `finetuning_glue.py` com os argumentos `--model_type`, `--task_name` e `--language`.
 
     **Argumentos `--model_type` disponíveis:**
 
@@ -97,17 +122,24 @@ Execute os seguintes comandos a partir da **raiz do projeto**:
 
     **Argumentos `--task_name` disponíveis:**
 
-    | Argumento | Descrição da Tarefa GLUE                                               |
-    | :-------- | :--------------------------------------------------------------------- |
-    | `stsb`    | STS-B: Similaridade Semântica Textual (regressão)                      |
-    | `mrpc`    | MRPC: Detecção de Paráfrases (classificação binária)                   |
-    | `rte`     | RTE: Reconhecimento de Implicação Textual (classificação binária)      |
+    | Argumento | Dataset (PT-BR)       | Dataset (EN) | Descrição da Tarefa GLUE                                      |
+    | :-------- | :-------------------- | :----------- | :------------------------------------------------------------ |
+    | `stsb`    | ASSIN 2 (Similarity)  | STS-B        | Similaridade Semântica Textual (regressão)                    |
+    | `rte`     | ASSIN 2 (Entailment)  | RTE          | Reconhecimento de Implicação Textual (classificação binária)  |
+    | `mrpc`    | (Não suportado em PT) | MRPC         | Detecção de Paráfrases (classificação binária)                |
 
-    **Exemplo (Student no STS-B):**
+    **Argumentos `--language` disponíveis:**
+
+    | Argumento | Descrição                            |
+    | :-------- | :----------------------------------- |
+    | `pt`      | Usa o dataset em português (ASSIN 2) |
+    | `en`      | Usa o dataset em inglês (GLUE)       |
+
+    **Exemplo (Student no ASSIN 2 - Similaridade):**
     ```bash
-    python -m project_co_training_co_distillation.finetuning_glue --model_type student --task_name stsb
+    python -m project_co_training_co_distillation.finetuning_glue --model_type student --task_name stsb --language pt
     ```
-    *(Carrega `models/best_student_model`, faz fine-tuning na tarefa STS-B e salva o resultado em `models/finetuned/student/stsb`)*
+    *(Carrega `models/best_student_model`, faz fine-tuning no ASSIN 2 e salva em `models/finetuned/pt/student/stsb`)*
 
 4.  **Executar a Avaliação:**
     Use o script `evaluate_glue.py` com os argumentos `--model_type`, `--task_name` e opcionalmente `--split`.
