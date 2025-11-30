@@ -25,7 +25,7 @@ TASK_CONFIGS = {
 TASK_CONFIGS_PT = {
     "stsb": {
         "dataset_name": "assin2",
-        "metric_name": "pearson",
+        "metric_name": "pearsonr",
         "num_labels": 1,
         "problem_type": "regression",
         "label_column": "relatedness_score",
