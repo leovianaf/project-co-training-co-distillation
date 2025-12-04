@@ -26,7 +26,7 @@ def prepare_pt_tasks():
 def prepare_aroeira_pretraining():
     processed_path = os.path.join(DATA_DIR, 'processed')
 
-    input_dataset_name = 'aroeira_subset_1k'
+    input_dataset_name = 'aroeira_subset_100k'
     input_path = os.path.join(processed_path, input_dataset_name)
 
     print(f"\n=== Preparando Dataset de Pré-treino (Aroeira) ===")
