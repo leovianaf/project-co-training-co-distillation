@@ -111,7 +111,7 @@ Execute os seguintes comandos a partir da **raiz do projeto**:
     *(Isso treinará Teacher e Student juntos e salvará os melhores modelos em `models/best_teacher_model` e `models/best_student_model`)*
 
 3.  **Executar o Fine-tuning:**
-    Use o script `finetuning_glue.py` com os argumentos `--model_type`, `--task_name` e `--language`.
+    Use o script `finetuning.py` com os argumentos `--model_type`, `--task_name` e `--language`.
 
     **Argumentos `--model_type` disponíveis:**
 
@@ -142,6 +142,8 @@ Execute os seguintes comandos a partir da **raiz do projeto**:
     *(Carrega `models/best_student_model`, faz fine-tuning no ASSIN 2 e salva em `models/finetuned/pt/student/stsb`)*
 
 4.  **Executar a predição no Conjunto de Teste:**
+    Use o script `predict.py` com os argumentos `--model_type`, `--task_name` e `--language`.
+
     Gera um arquivo CSV com as predições do modelo fine-tunado no conjunto de teste. Útil para submissão em leaderboards ou análise qualitativa dos erros.
 
     **Argumentos Disponíveis: Os mesmos do Fine-tuning (--model_type, --task_name, --language).**
