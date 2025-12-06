@@ -12,24 +12,19 @@ from transformers import (
 )
 from .utils_finetune import TASK_CONFIGS, TASK_CONFIGS_PT
 
-
 # ============================================================
 #  Predição no conjunto de teste (PT + EN) — Student & Teacher
 # ============================================================
 
 def main():
+    # --- Argumentos da Linha de Comando ---
     parser = argparse.ArgumentParser(description="Gerar previsões no conjunto de teste (GLUE/ASSIN2).")
-
-    # AGORA SUPORTA TEACHER
     parser.add_argument("--model_type", type=str, required=True, choices=["teacher", "student"])
-
     parser.add_argument("--task_name", type=str, required=True, choices=["stsb", "mrpc", "rte"])
     parser.add_argument("--language", type=str, required=True, choices=["pt", "en"])
     args = parser.parse_args()
 
-    # ------------------------------------------------------------
-    #  Seleção da configuração da task
-    # ------------------------------------------------------------
+    # -------- Selecionar config da task --------
     if args.language == "pt":
         if args.task_name not in TASK_CONFIGS_PT:
             raise ValueError(
@@ -46,9 +41,7 @@ def main():
 
     dataset_name = TASK_CONFIG.get("dataset_name", args.task_name)
 
-    # ------------------------------------------------------------
-    #  Caminhos
-    # ------------------------------------------------------------
+    # -------- Caminhos --------
     PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     MODEL_DIR = os.path.join(
@@ -73,25 +66,17 @@ def main():
     print(f"[PREDICT] Model Path : {MODEL_DIR}")
     print("===========================================\n")
 
-    # ------------------------------------------------------------
-    #  Carregar modelo + tokenizer
-    # ------------------------------------------------------------
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    # -------- Carregar modelo + tokenizer + dataset --------
     model = AutoModelForSequenceClassification.from_pretrained(MODEL_DIR).to(device)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_DIR, use_fast=True)
 
-    # ------------------------------------------------------------
-    #  Carregar dataset
-    # ------------------------------------------------------------
     dataset = load_from_disk(DATA_PATH)
 
     if "test" not in dataset:
         raise ValueError(f"O dataset '{dataset_name}' não tem split 'test'.")
 
-    # ------------------------------------------------------------
-    #  Tokenização
-    # ------------------------------------------------------------
     def preprocess_function(examples):
         return tokenizer(
             examples["sentence1"],
@@ -106,17 +91,15 @@ def main():
     # remover colunas desnecessárias
     cols_to_drop = []
     for col in ["sentence1", "sentence2", "idx", "label"]:
-        if col in encoded_ds["test"].column_names:
+        if col in encoded_ds["test"].column_names: # type: ignore
             cols_to_drop.append(col)
 
     encoded_ds = encoded_ds.remove_columns(cols_to_drop)
     encoded_ds.set_format("torch")
 
-    # ------------------------------------------------------------
-    #  Configuração para inferência
-    # ------------------------------------------------------------
+    # -------- Configurar Trainer --------
     training_args = TrainingArguments(
-        output_dir=os.path.join(MODEL_DIR, "pred_temp"),
+        output_dir=os.path.join(MODEL_DIR, "pred_temp"), # type: ignore
         per_device_eval_batch_size=32,
         report_to=[],
     )
@@ -124,26 +107,23 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        tokenizer=tokenizer,
+        tokenizer=tokenizer, # type: ignore
         data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
     )
 
-    # ------------------------------------------------------------
-    #  Predição
-    # ------------------------------------------------------------
+    # ------- Rodar predições --------
     print("[INFO] Rodando predições...")
-    predictions = trainer.predict(encoded_ds["test"])
+    predictions = trainer.predict(encoded_ds["test"]) # type: ignore
 
     logits = predictions.predictions
 
     if args.task_name == "stsb":
-        preds = logits.squeeze()  # Regressão
+        # Regressão
+        preds = logits.squeeze()  # type: ignore
     else:
-        preds = logits.argmax(axis=-1)  # Classificação
+        # Classificação
+        preds = logits.argmax(axis=-1)  # type: ignore
 
-    # ------------------------------------------------------------
-    #  Salvar arquivo final
-    # ------------------------------------------------------------
     df_out = pd.DataFrame({
         "id": list(range(len(preds))),
         "prediction": preds.tolist()

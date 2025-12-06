@@ -6,14 +6,14 @@ import seaborn as sns
 import pandas as pd
 
 # ============================================================
-#  Configurações gerais
+#  Configurações gerais para geração dos gráficos
 # ============================================================
 PROJECT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 RESULTS_DIR = os.path.join(PROJECT_DIR, "models", "finetuned")
 OUT_DIR = os.path.join(PROJECT_DIR, "reports", "figures")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# Paleta idêntica ao gráfico original
+# Paleta de cores do gráfico
 PALETTE = {
     "Teacher": "#4878CF",
     "Student": "#E6B800",
@@ -131,10 +131,10 @@ def plot_task_comparison(df, lang):
 
     # labels acima das barras
     for p in ax.patches:
-        height = p.get_height()
+        height = p.get_height() # type: ignore
         if height > 0:
             ax.text(
-                p.get_x() + p.get_width() / 2,
+                p.get_x() + p.get_width() / 2, # type: ignore
                 height + 0.015,
                 f"{height*100:.1f}%",
                 ha="center", fontsize=8
@@ -167,9 +167,9 @@ def plot_overall(df, lang):
     ax.set_title(f"Média Geral – Teacher vs Student ({lang.upper()})")
 
     for p in ax.patches:
-        height = p.get_height()
+        height = p.get_height() # type: ignore
         ax.text(
-            p.get_x() + p.get_width()/2,
+            p.get_x() + p.get_width()/2, # type: ignore
             height + 0.02,
             f"{height:.3f}",
             ha="center", fontsize=8
@@ -219,9 +219,6 @@ def plot_gap(df, lang):
     plt.show()
 
 
-# ============================================================
-#  Execução
-# ============================================================
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--language", type=str, required=True, choices=["en", "pt"])

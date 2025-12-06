@@ -17,6 +17,7 @@ from .utils_finetune import TASK_CONFIGS, TASK_CONFIGS_PT, get_compute_metrics_f
 # ============================================================
 
 def main():
+    # --- Argumentos da Linha de Comando ---
     parser = argparse.ArgumentParser(description="Avaliar modelos fine-tunados (GLUE / ASSIN2).")
     parser.add_argument("--model_type", type=str, required=True, choices=["teacher", "student"])
     parser.add_argument("--task_name", type=str, required=True, choices=["stsb", "mrpc", "rte"])
@@ -76,7 +77,7 @@ def main():
     if args.split not in dataset:
         raise ValueError(f"Split '{args.split}' não existe no dataset '{dataset_name}'.")
 
-    # -------- Tokenização (igual fine-tuning) --------
+    # -------- Tokenização --------
     def preprocess_function(examples):
         return tokenizer(
             examples["sentence1"],
@@ -139,16 +140,15 @@ def main():
         model=model,
         args=training_args,
         eval_dataset=encoded_ds[args.split],
-        tokenizer=tokenizer,
+        tokenizer=tokenizer, # type: ignore
         data_collator=DataCollatorWithPadding(tokenizer=tokenizer),
         compute_metrics=get_compute_metrics_fn(args.task_name),
     )
 
     # -------- Avaliar --------
     print("[INFO] Iniciando avaliação...\n")
-    metrics = trainer.evaluate(encoded_ds[args.split])
+    metrics = trainer.evaluate(encoded_ds[args.split]) # type: ignore
 
-    # Salvar como all_results.json (igual GLUE original)
     save_path = os.path.join(MODEL_DIR, "all_results.json")
     with open(save_path, "w") as f:
         json.dump(metrics, f, indent=2)

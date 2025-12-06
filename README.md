@@ -137,12 +137,23 @@ Execute os seguintes comandos a partir da **raiz do projeto**:
 
     **Exemplo (Student no ASSIN 2 - Similaridade):**
     ```bash
-    python -m project_co_training_co_distillation.finetuning_glue --model_type student --task_name stsb --language pt
+    python -m project_co_training_co_distillation.finetuning --model_type student --task_name stsb --language pt
     ```
     *(Carrega `models/best_student_model`, faz fine-tuning no ASSIN 2 e salva em `models/finetuned/pt/student/stsb`)*
 
-4.  **Executar a Avaliação:**
-    Use o script `evaluate_glue.py` com os argumentos `--model_type`, `--task_name` e opcionalmente `--split`.
+4.  **Executar a predição no Conjunto de Teste:**
+    Gera um arquivo CSV com as predições do modelo fine-tunado no conjunto de teste. Útil para submissão em leaderboards ou análise qualitativa dos erros.
+
+    **Argumentos Disponíveis: Os mesmos do Fine-tuning (--model_type, --task_name, --language).**
+
+    **Exemplo (Student no STS-B, split de teste):**
+    ```bash
+    python -m project_co_training_co_distillation.predict --model_type student --task_name stsb --language pt
+    ```
+    *(O arquivo CSV será salvo na pasta `reports/predictions/`)*
+
+5.  **Executar a Avaliação:**
+    Use o script `evaluate.py` com os argumentos `--model_type`, `--task_name` e opcionalmente `--split`.
 
     **Argumento `--split` disponíveis:**
 
@@ -153,6 +164,6 @@ Execute os seguintes comandos a partir da **raiz do projeto**:
 
     **Exemplo (Student no STS-B, split de teste):**
     ```bash
-    python -m project_co_training_co_distillation.evaluate_glue --model_type student --task_name stsb --split test
+    python -m project_co_training_co_distillation.evaluate_glue --model_type student --task_name stsb --language pt --split test
     ```
-    *(Carrega o modelo de `models/finetuned/student/stsb` e avalia no conjunto de teste do STS-B)*
+    *(Carrega o modelo de `models/finetuned/pt/student/stsb` e avalia no conjunto de teste do STS-B (ASSIN2))*
