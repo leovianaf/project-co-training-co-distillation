@@ -94,11 +94,18 @@ def main():
       # Para Classificação: Converte String -> Int e renomeia
       print(f"Mapeando labels de '{label_col}' para inteiros...")
       # Mapeamento do ASSIN 2
-      label2id = {"NONE": 0, "ENTAILMENT": 1}
+      label2id = {
+        "NONE": 0,
+        "ENTAILMENT": 1,
+        0: 0,
+        1: 1
+      }
 
       encoded_ds = encoded_ds.map(
-          lambda x: {'label': label2id[x[label_col]]}
+        lambda x: {"label": label2id[x[label_col]]},
+        remove_columns=[label_col]
       )
+
 
   # Remove colunas desnecessárias para evitar erro no Trainer
   cols_to_keep = ['input_ids', 'attention_mask', 'token_type_ids', 'label']
@@ -150,7 +157,6 @@ def main():
     compute_metrics=get_compute_metrics_fn(args.task_name),
   )
 
-  # --- Treinar o modelo ---
   print(f"\nIniciando fine-tuning do {args.model_type} na task {args.task_name} ...")
   trainer.train()
 

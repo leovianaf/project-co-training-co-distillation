@@ -1,1 +1,0 @@
-## script que compara Teacher vs Student em todas as tasks
